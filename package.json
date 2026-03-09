@@ -30,6 +30,7 @@
     "notion-sync": "daily-upload.js"
   },
   "scripts": {
+    "test": "node tests/cli.test.js",
     "help": "node daily-upload.js --help",
     "init": "node daily-upload.js --init",
     "doctor": "node daily-upload.js --doctor",

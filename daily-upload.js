@@ -816,7 +816,17 @@ function checkValue(name, ok, value) {
   };
 }
 
-main().catch((error) => {
-  console.error(error.message || String(error));
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error.message || String(error));
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  normalizeCommand,
+  sanitizeText,
+  stripAnsi,
+  initializeEnvFile,
+  runDoctor,
+};
