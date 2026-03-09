@@ -1,6 +1,19 @@
 # notion-sync
 
-CLI that collects daily Codex sessions and terminal logs, masks common secrets, stores sync state encrypted, and uploads a daily report to a Notion database.
+`notion-sync` is a local-first CLI for turning Codex sessions, terminal logs, and shell history into structured Notion documentation.
+
+It is designed for people who want:
+- private local collection
+- secret masking before upload
+- encrypted local sync state
+- direct sync to Notion or remote delivery into a hosted intake API
+
+## Highlights
+
+- Local-first: reads logs from your machine instead of from a browser upload
+- Safe-by-default: masks common tokens and stores sync state encrypted
+- Flexible delivery: send directly to Notion or to a remote API
+- Automation-friendly: works with cron, CI, and hosted intake workflows
 
 ## Install
 
@@ -8,11 +21,39 @@ CLI that collects daily Codex sessions and terminal logs, masks common secrets, 
 npm install -g @joseftmson/notion-sync
 ```
 
+Package:
+- `https://www.npmjs.com/package/@joseftmson/notion-sync`
+
+Repository:
+- `https://github.com/jozrftamson/notion-sync`
+
 ## Setup
 
-1. Copy `.env.example` to `.env`.
-2. Fill in your Notion token, database ID, and encryption key.
-3. Run:
+1. Create a working folder:
+
+```bash
+mkdir notion-sync-workspace
+cd notion-sync-workspace
+```
+
+2. Generate a starter config:
+
+```bash
+notion-sync init
+```
+
+3. Edit `.env` and fill in:
+- `NOTION_TOKEN`
+- `NOTION_DATABASE_ID`
+- `ENCRYPTION_KEY`
+
+4. Validate the environment:
+
+```bash
+notion-sync doctor
+```
+
+5. Preview and sync:
 
 ```bash
 notion-sync dry-run
@@ -50,6 +91,18 @@ Example cron entry:
 - Common secrets are masked before upload.
 - Raw source logs are never modified.
 
+## Quickstart
+
+```bash
+npm install -g @joseftmson/notion-sync
+mkdir notion-sync-workspace
+cd notion-sync-workspace
+notion-sync init
+notion-sync doctor
+notion-sync report
+notion-sync run
+```
+
 ## Commands
 
 ```bash
@@ -75,3 +128,15 @@ notion-sync remote
 ```
 
 This sends the current collected report to the remote API. The Vercel app can then create the Notion page centrally.
+
+## Screenshots
+
+Suggested screenshots for the repository:
+- CLI `doctor` output
+- CLI `report` preview
+- successful `remote` upload response
+
+Recommended asset paths:
+- `docs/screenshots/cli-doctor.png`
+- `docs/screenshots/cli-report.png`
+- `docs/screenshots/cli-remote.png`
