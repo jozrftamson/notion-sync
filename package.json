@@ -1,6 +1,6 @@
 {
   "name": "@joseftmson/notion-sync",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "commonjs",
   "description": "Daily Codex and terminal log sync to Notion with encrypted local state.",
   "author": "Josef",
@@ -16,6 +16,7 @@
   "files": [
     "daily-upload.js",
     "README.md",
+    "CHANGELOG.md",
     ".env.example",
     "LICENSE"
   ],
