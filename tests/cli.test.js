@@ -96,6 +96,10 @@ function testExportCodexSession() {
   const resultWithOutputDir = cli.exportCodexSession([inputFile, "--output-dir", outputDir]);
   assert.equal(resultWithOutputDir.outputPath, path.join(outputDir, "session.md"));
   assert.ok(fs.existsSync(resultWithOutputDir.outputPath));
+  assert.equal(resultWithOutputDir.destination, "file");
+
+  const notionTarget = cli.exportCodexSession([inputFile, "--destination", "notion"]);
+  assert.equal(notionTarget.destination, "notion");
 }
 
 function testExportLatestCodexSession() {
@@ -159,9 +163,23 @@ function testExportLatestCodexSessionBatch() {
   const content = fs.readFileSync(result.outputPath, "utf8");
   assert.match(content, /zwei/);
   assert.match(content, /drei/);
+  assert.equal(result.destination, "file");
 
   delete process.env.CODEX_SESSIONS_DIR;
   loadCli();
+}
+
+async function testDestinationDispatcher() {
+  const result = await cli.deliverCodexExport(
+    { destination: "file", outputPath: "/tmp/export.md", count: 2 },
+    {
+      toNotion: async () => "page_1",
+      toRemote: async () => ({ ok: true, url: "https://example.com/remote" }),
+      getNotionPageUrl: (pageId) => `https://example.com/${pageId}`,
+    }
+  );
+  assert.equal(result.destination, "file");
+  assert.equal(result.outputPath, "/tmp/export.md");
 }
 
 function testBuildCodexExportBlocks() {
@@ -271,6 +289,7 @@ async function run() {
   testExportLatestCodexSession();
   testExportLatestCodexSessionBatch();
   testBuildCodexExportBlocks();
+  await testDestinationDispatcher();
   await testRemoteUploadFlow();
   await testRemoteCodexExportFlow();
   console.log("cli.test.js passed");

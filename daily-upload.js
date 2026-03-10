@@ -22,6 +22,7 @@ const {
   uploadCodexExportToRemote: uploadCodexExportToRemoteCore,
   collectSummaryText,
 } = require("./lib/remote");
+const { deliverCodexExport } = require("./lib/destinations");
 const {
   buildReport: buildReportCore,
   sanitizeText,
@@ -90,17 +91,20 @@ async function main() {
 
   if (EXPORT_CODEX_ONLY) {
     const result = exportCodexSession(args.slice(1));
-    if (result.sendToNotion) {
+    if (result.destination === "notion") {
       ensureLocalNotionConfig();
-      const pageId = await uploadCodexExportToNotion(result);
-      console.log(`Exported ${result.count} entries to ${result.outputPath} and uploaded to ${getNotionPageUrl(pageId)}`);
+    }
+    const delivery = await deliverCodexExport(result, {
+      toNotion: uploadCodexExportToNotion,
+      toRemote: uploadCodexExportToRemote,
+      getNotionPageUrl,
+    });
+    if (delivery.destination === "notion") {
+      console.log(`Exported ${result.count} entries to ${result.outputPath} and uploaded to ${delivery.url}`);
       return;
     }
-    if (result.sendRemote) {
-      const remoteResult = await uploadCodexExportToRemote(result);
-      console.log(
-        `Exported ${result.count} entries to ${result.outputPath} and sent to remote ${remoteResult.url || "(no url returned)"}`
-      );
+    if (delivery.destination === "remote") {
+      console.log(`Exported ${result.count} entries to ${result.outputPath} and sent to remote ${delivery.url || "(no url returned)"}`);
       return;
     }
     console.log(`Exported ${result.count} entries to ${result.outputPath}`);
@@ -109,19 +113,20 @@ async function main() {
 
   if (EXPORT_CODEX_LATEST_ONLY) {
     const result = exportLatestCodexSession(args.slice(1));
-    if (result.sendToNotion) {
+    if (result.destination === "notion") {
       ensureLocalNotionConfig();
-      const pageId = await uploadCodexExportToNotion(result);
-      console.log(
-        `Exported ${result.count} entries from ${result.inputPath} to ${result.outputPath} and uploaded to ${getNotionPageUrl(pageId)}`
-      );
+    }
+    const delivery = await deliverCodexExport(result, {
+      toNotion: uploadCodexExportToNotion,
+      toRemote: uploadCodexExportToRemote,
+      getNotionPageUrl,
+    });
+    if (delivery.destination === "notion") {
+      console.log(`Exported ${result.count} entries from ${result.inputPath} to ${result.outputPath} and uploaded to ${delivery.url}`);
       return;
     }
-    if (result.sendRemote) {
-      const remoteResult = await uploadCodexExportToRemote(result);
-      console.log(
-        `Exported ${result.count} entries from ${result.inputPath} to ${result.outputPath} and sent to remote ${remoteResult.url || "(no url returned)"}`
-      );
+    if (delivery.destination === "remote") {
+      console.log(`Exported ${result.count} entries from ${result.inputPath} to ${result.outputPath} and sent to remote ${delivery.url || "(no url returned)"}`);
       return;
     }
     console.log(`Exported ${result.count} entries from ${result.inputPath} to ${result.outputPath}`);
@@ -223,8 +228,8 @@ function getHelpText() {
     "  notion-sync report   Preview the next upload in the terminal",
     "  notion-sync open     Print the last synced Notion page URL",
     "  notion-sync remote   Send the current report to a remote API",
-    "  notion-sync export-codex <session.jsonl> [--output file] [--format markdown|text] [--roles user,assistant] [--send-to-notion|--send-remote]",
-    "  notion-sync export-codex-latest [--output file] [--format markdown|text] [--roles user,assistant] [--send-to-notion|--send-remote]",
+    "  notion-sync export-codex <session.jsonl> [--output file] [--output-dir dir] [--format markdown|text] [--roles user,assistant] [--destination file|notion|remote]",
+    "  notion-sync export-codex-latest [--output file] [--output-dir dir] [--latest N] [--format markdown|text] [--roles user,assistant] [--destination file|notion|remote]",
     "  notion-sync dry-run  Build the next report without uploading",
     "  notion-sync run      Upload the next report to Notion",
     "",
@@ -668,6 +673,7 @@ module.exports = {
   initializeEnvFile,
   runDoctor,
   uploadReportToRemote,
+  deliverCodexExport,
   exportCodexSession,
   exportLatestCodexSession,
   buildCodexExportBlocks,
