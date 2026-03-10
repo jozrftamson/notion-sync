@@ -115,7 +115,21 @@ notion-sync open
 notion-sync dry-run
 notion-sync run
 notion-sync remote
+notion-sync export-codex ~/.codex/sessions/2026/03/09/session.jsonl --output ./exports/session.md
+notion-sync export-codex-latest --output ./exports/latest-session.md
 ```
+
+## Codex session export
+
+Convert a raw Codex `jsonl` session into readable Markdown or text:
+
+```bash
+notion-sync export-codex ~/.codex/sessions/2026/03/08/session.jsonl
+notion-sync export-codex session.jsonl --format text --output ./session.txt
+notion-sync export-codex-latest --output ./latest-session.md
+```
+
+This is useful when you want a human-readable chronology before sending the content to Notion.
 
 ## Remote upload mode
 

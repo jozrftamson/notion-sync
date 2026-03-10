@@ -1,6 +1,7 @@
 .env
 node_modules
 state.enc.json
+exports/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

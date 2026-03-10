@@ -31,6 +31,8 @@
   },
   "scripts": {
     "test": "node tests/cli.test.js",
+    "export:codex": "node daily-upload.js export-codex",
+    "export:codex-latest": "node daily-upload.js export-codex-latest",
     "help": "node daily-upload.js --help",
     "init": "node daily-upload.js --init",
     "doctor": "node daily-upload.js --doctor",

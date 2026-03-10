@@ -22,6 +22,8 @@ function testNormalizeCommand() {
   assert.equal(cli.normalizeCommand(["help"]), "help");
   assert.equal(cli.normalizeCommand(["doctor"]), "doctor");
   assert.equal(cli.normalizeCommand(["remote"]), "remote");
+  assert.equal(cli.normalizeCommand(["export-codex"]), "export-codex");
+  assert.equal(cli.normalizeCommand(["export-codex-latest"]), "export-codex-latest");
 }
 
 function testSanitizeText() {
@@ -56,6 +58,75 @@ function testDoctorShape() {
   assert.equal(typeof report.ok, "boolean");
   assert.ok(Array.isArray(report.checks));
   assert.ok(report.checks.some((check) => check.name === "paths.stateFile"));
+}
+
+function testExportCodexSession() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "notion-sync-export-"));
+  const inputFile = path.join(tempDir, "session.jsonl");
+  const outputFile = path.join(tempDir, "session.md");
+  fs.writeFileSync(
+    inputFile,
+    [
+      JSON.stringify({
+        type: "event_msg",
+        timestamp: "2026-03-09T12:00:00.000Z",
+        payload: { type: "user_message", message: "Hallo Welt" },
+      }),
+      JSON.stringify({
+        type: "response_item",
+        timestamp: "2026-03-09T12:00:05.000Z",
+        payload: {
+          type: "message",
+          role: "assistant",
+          content: [{ type: "output_text", text: "Antwort Text" }],
+        },
+      }),
+    ].join("\n")
+  );
+
+  const result = cli.exportCodexSession([inputFile, "--output", outputFile]);
+  assert.equal(result.outputPath, outputFile);
+  assert.equal(result.count, 2);
+  const content = fs.readFileSync(outputFile, "utf8");
+  assert.match(content, /Hallo Welt/);
+  assert.match(content, /Antwort Text/);
+}
+
+function testExportLatestCodexSession() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "notion-sync-export-latest-"));
+  const sessionsDir = path.join(tempDir, "sessions");
+  fs.mkdirSync(path.join(sessionsDir, "2026", "03", "09"), { recursive: true });
+  const olderFile = path.join(sessionsDir, "2026", "03", "09", "rollout-2026-03-09T10-00-00.jsonl");
+  const latestFile = path.join(sessionsDir, "2026", "03", "09", "rollout-2026-03-09T11-00-00.jsonl");
+  fs.writeFileSync(
+    olderFile,
+    JSON.stringify({
+      type: "event_msg",
+      timestamp: "2026-03-09T10:00:00.000Z",
+      payload: { type: "user_message", message: "alt" },
+    }) + "\n"
+  );
+  fs.writeFileSync(
+    latestFile,
+    JSON.stringify({
+      type: "event_msg",
+      timestamp: "2026-03-09T11:00:00.000Z",
+      payload: { type: "user_message", message: "neu" },
+    }) + "\n"
+  );
+
+  process.env.CODEX_SESSIONS_DIR = sessionsDir;
+  const cliWithSessions = loadCli();
+  const outputFile = path.join(tempDir, "latest.md");
+  const result = cliWithSessions.exportLatestCodexSession(["--output", outputFile]);
+
+  assert.equal(result.inputPath, latestFile);
+  assert.equal(result.outputPath, outputFile);
+  assert.equal(result.count, 1);
+  assert.match(fs.readFileSync(outputFile, "utf8"), /neu/);
+
+  delete process.env.CODEX_SESSIONS_DIR;
+  loadCli();
 }
 
 async function testRemoteUploadFlow() {
@@ -108,6 +179,8 @@ async function run() {
   testStripAnsi();
   testInitializeEnvFile();
   testDoctorShape();
+  testExportCodexSession();
+  testExportLatestCodexSession();
   await testRemoteUploadFlow();
   console.log("cli.test.js passed");
 }

@@ -15,6 +15,8 @@ const STATUS_ONLY = command === "status";
 const REPORT_ONLY = command === "report";
 const OPEN_ONLY = command === "open";
 const REMOTE_ONLY = command === "remote";
+const EXPORT_CODEX_ONLY = command === "export-codex";
+const EXPORT_CODEX_LATEST_ONLY = command === "export-codex-latest";
 const HELP_ONLY = command === "help";
 const APP_DIR = getAppDir();
 const CONFIG = {
@@ -57,6 +59,18 @@ async function main() {
 
   if (DOCTOR_ONLY) {
     console.log(JSON.stringify(runDoctor(), null, 2));
+    return;
+  }
+
+  if (EXPORT_CODEX_ONLY) {
+    const result = exportCodexSession(args.slice(1));
+    console.log(`Exported ${result.count} entries to ${result.outputPath}`);
+    return;
+  }
+
+  if (EXPORT_CODEX_LATEST_ONLY) {
+    const result = exportLatestCodexSession(args.slice(1));
+    console.log(`Exported ${result.count} entries from ${result.inputPath} to ${result.outputPath}`);
     return;
   }
 
@@ -155,6 +169,8 @@ function getHelpText() {
     "  notion-sync report   Preview the next upload in the terminal",
     "  notion-sync open     Print the last synced Notion page URL",
     "  notion-sync remote   Send the current report to a remote API",
+    "  notion-sync export-codex <session.jsonl> [--output file] [--format markdown|text] [--roles user,assistant]",
+    "  notion-sync export-codex-latest [--output file] [--format markdown|text] [--roles user,assistant]",
     "  notion-sync dry-run  Build the next report without uploading",
     "  notion-sync run      Upload the next report to Notion",
     "",
@@ -196,6 +212,12 @@ function normalizeCommand(argv) {
   }
   if (first === "--remote" || first === "remote") {
     return "remote";
+  }
+  if (first === "export-codex") {
+    return "export-codex";
+  }
+  if (first === "export-codex-latest") {
+    return "export-codex-latest";
   }
   if (first === "--help" || first === "-h" || first === "help") {
     return "help";
@@ -800,6 +822,192 @@ function runDoctor() {
   };
 }
 
+function exportCodexSession(argv) {
+  const options = parseCodexExportArgs(argv);
+  if (options.help || !options.input) {
+    throw new Error(
+      "Usage: notion-sync export-codex <session.jsonl> [--output file] [--format markdown|text] [--roles user,assistant]"
+    );
+  }
+
+  const inputPath = path.resolve(options.input);
+  const outputPath = path.resolve(options.output || buildCodexExportOutputPath(inputPath, options.format));
+  const allowedRoles = new Set(
+    (options.roles || "user,assistant")
+      .split(",")
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean)
+  );
+
+  const lines = fs.readFileSync(inputPath, "utf8").split(/\r?\n/).filter(Boolean);
+  const messages = lines
+    .map(parseCodexExportLine)
+    .filter(Boolean)
+    .flatMap(extractCodexReadableEntries)
+    .filter((item) => allowedRoles.has(item.role))
+    .filter((item) => !shouldSkipCodexExportItem(item))
+    .filter(deduplicateCodexExportAdjacent());
+
+  if (!messages.length) {
+    throw new Error("No readable Codex messages found in the provided session file.");
+  }
+
+  const rendered =
+    options.format === "text"
+      ? renderCodexExportText(inputPath, messages)
+      : renderCodexExportMarkdown(inputPath, messages);
+
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  fs.writeFileSync(outputPath, rendered);
+  return { outputPath, count: messages.length };
+}
+
+function exportLatestCodexSession(argv) {
+  const files = walkFiles(CONFIG.codexSessionsDir)
+    .filter((file) => file.endsWith(".jsonl"))
+    .sort();
+
+  if (!files.length) {
+    throw new Error(`No Codex session files found in ${CONFIG.codexSessionsDir}.`);
+  }
+
+  const latestFile = files[files.length - 1];
+  const result = exportCodexSession([latestFile, ...argv]);
+  return {
+    inputPath: latestFile,
+    outputPath: result.outputPath,
+    count: result.count,
+  };
+}
+
+function parseCodexExportArgs(argv) {
+  const options = { format: "markdown" };
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === "--help" || arg === "-h") {
+      options.help = true;
+      continue;
+    }
+    if (arg === "--output" || arg === "-o") {
+      options.output = argv[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg === "--format") {
+      options.format = argv[index + 1] || "markdown";
+      index += 1;
+      continue;
+    }
+    if (arg === "--roles") {
+      options.roles = argv[index + 1] || "user,assistant";
+      index += 1;
+      continue;
+    }
+    if (!options.input) {
+      options.input = arg;
+    }
+  }
+  return options;
+}
+
+function buildCodexExportOutputPath(inputPath, format) {
+  const ext = format === "text" ? ".txt" : ".md";
+  const base = path.basename(inputPath, path.extname(inputPath));
+  return path.join(process.cwd(), `${base}${ext}`);
+}
+
+function parseCodexExportLine(line) {
+  try {
+    return JSON.parse(line);
+  } catch {
+    return null;
+  }
+}
+
+function extractCodexReadableEntries(entry) {
+  const timestamp = entry.timestamp || entry.payload?.timestamp || "";
+
+  if (entry.type === "event_msg" && entry.payload?.message) {
+    return [
+      {
+        timestamp,
+        role: mapCodexExportRole(entry.payload.type),
+        text: cleanCodexExportText(entry.payload.message),
+      },
+    ];
+  }
+
+  if (entry.type === "response_item" && entry.payload?.type === "message") {
+    const role = entry.payload.role || "assistant";
+    return (entry.payload.content || [])
+      .filter((part) => part.type === "input_text" || part.type === "output_text")
+      .map((part) => ({
+        timestamp,
+        role,
+        text: cleanCodexExportText(part.text),
+      }))
+      .filter((item) => item.text);
+  }
+
+  return [];
+}
+
+function mapCodexExportRole(type) {
+  if (type === "user_message") {
+    return "user";
+  }
+  if (type === "agent_message") {
+    return "assistant";
+  }
+  return type || "event";
+}
+
+function cleanCodexExportText(text) {
+  return stripAnsi(String(text || "").replace(/\r/g, "")).trim();
+}
+
+function shouldSkipCodexExportItem(item) {
+  const text = item.text.trim();
+  return (
+    text.startsWith("# AGENTS.md instructions") ||
+    text.startsWith("<environment_context>") ||
+    text.startsWith("<INSTRUCTIONS>")
+  );
+}
+
+function deduplicateCodexExportAdjacent() {
+  let previous = null;
+  return (item) => {
+    const signature = `${item.role}|${item.timestamp}|${item.text}`;
+    if (signature === previous) {
+      return false;
+    }
+    previous = signature;
+    return true;
+  };
+}
+
+function renderCodexExportMarkdown(inputPath, messages) {
+  const lines = ["# Codex Session Export", "", `Source: \`${inputPath}\``, `Entries: ${messages.length}`, ""];
+  for (const item of messages) {
+    lines.push(`## ${item.role.toUpperCase()}${item.timestamp ? ` · ${item.timestamp}` : ""}`);
+    lines.push("");
+    lines.push(item.text);
+    lines.push("");
+  }
+  return lines.join("\n").trim() + "\n";
+}
+
+function renderCodexExportText(inputPath, messages) {
+  const lines = ["Codex Session Export", `Source: ${inputPath}`, `Entries: ${messages.length}`, ""];
+  for (const item of messages) {
+    lines.push(`[${item.timestamp || "no-timestamp"}] ${item.role.toUpperCase()}`);
+    lines.push(item.text);
+    lines.push("");
+  }
+  return lines.join("\n").trim() + "\n";
+}
+
 function checkPath(name, targetPath) {
   return {
     name,
@@ -832,4 +1040,6 @@ module.exports = {
   initializeEnvFile,
   runDoctor,
   uploadReportToRemote,
+  exportCodexSession,
+  exportLatestCodexSession,
 };
