@@ -1,6 +1,12 @@
 # notion-sync
 
+[![npm version](https://img.shields.io/npm/v/%40joseftmson%2Fnotion-sync)](https://www.npmjs.com/package/@joseftmson/notion-sync)
+[![npm downloads](https://img.shields.io/npm/dm/%40joseftmson%2Fnotion-sync)](https://www.npmjs.com/package/@joseftmson/notion-sync)
+[![CI](https://img.shields.io/github/actions/workflow/status/jozrftamson/notion-sync/npm-publish.yml?branch=main&label=publish)](https://github.com/jozrftamson/notion-sync/actions)
+
 `notion-sync` is a local-first CLI for turning Codex sessions, terminal logs, and shell history into structured Notion documentation.
+
+Turn Codex sessions and terminal activity into structured Notion pages with a local CLI, optional hosted intake, and export-first workflows.
 
 It is designed for people who want:
 - private local collection
@@ -36,6 +42,9 @@ Package:
 
 Repository:
 - `https://github.com/jozrftamson/notion-sync`
+
+Release notes:
+- `docs/release-notes-1.2.0.md`
 
 ## Setup
 
@@ -175,3 +184,11 @@ Recommended asset paths:
 - `docs/screenshots/cli-remote.png`
 - `docs/screenshots/cli-codex-export.png`
 - `docs/screenshots/cli-codex-batch.png`
+
+## Contributing
+
+See `CONTRIBUTING.md` for local setup and contribution guidance.
+
+## Security
+
+See `SECURITY.md` for responsible reporting guidance.
