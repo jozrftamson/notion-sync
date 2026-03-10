@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0 - 2026-03-10
+
+- Added `--output-dir` for Codex export commands.
+- Added `--latest N` batch export support for the newest local Codex sessions.
+- Verified batch exports with direct Notion upload.
+- Verified batch exports through the hosted remote API.
+- Refactored the CLI into dedicated `codex-export`, `notion`, `remote`, and `report` modules.
+
 ## 1.1.0 - 2026-03-10
 
 - Added `export-codex` to convert Codex `jsonl` sessions into readable Markdown or text.
