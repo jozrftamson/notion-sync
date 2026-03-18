@@ -3,6 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/%40joseftmson%2Fnotion-sync)](https://www.npmjs.com/package/@joseftmson/notion-sync)
 [![npm downloads](https://img.shields.io/npm/dm/%40joseftmson%2Fnotion-sync)](https://www.npmjs.com/package/@joseftmson/notion-sync)
 [![CI](https://img.shields.io/github/actions/workflow/status/jozrftamson/notion-sync/npm-publish.yml?branch=main&label=publish)](https://github.com/jozrftamson/notion-sync/actions)
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/jozrftamson/notion-sync?utm_source=badge)
 
 `notion-sync` is a local-first CLI for turning Codex sessions, terminal logs, and shell history into structured Notion documentation.
 

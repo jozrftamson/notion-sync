@@ -36,6 +36,7 @@
   },
   "scripts": {
     "test": "node tests/cli.test.js",
+    "bench": "npx vitest bench --run",
     "export:codex": "node daily-upload.js export-codex",
     "export:codex-latest": "node daily-upload.js export-codex-latest",
     "help": "node daily-upload.js --help",
@@ -47,5 +48,9 @@
     "report": "node daily-upload.js --report",
     "open": "node daily-upload.js --open",
     "remote": "node daily-upload.js --remote"
+  },
+  "devDependencies": {
+    "@codspeed/vitest-plugin": "^5.2.0",
+    "vitest": "^4.1.0"
   }
 }
